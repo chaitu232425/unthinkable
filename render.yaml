@@ -40,16 +40,17 @@ services:
 
       - key: MONGODB_DB_NAME
         value: ticket_booking
-      # Trying smtp here since Resend's sandbox restricts real delivery to one address
-      # without a verified domain — cloud hosts are often NOT subject to the same
-      # outbound-SMTP blocking that broke this locally, worth testing. Must match
-      # SMTP_USER exactly (Gmail requires the From address to be the authenticated
-      # account). Revert to EMAIL_TRANSPORT=resend / EMAIL_FROM=onboarding@resend.dev
-      # if Render's network turns out to block SMTP the same way.
+      # Tested smtp here (Gmail) as an attempt to bypass Resend's sandbox restriction —
+      # confirmed it does NOT work: Render's free-tier network also blocks outbound
+      # SMTP (the production notification record for this test came back with
+      # last_error: "Connection timeout", same as the developer's home network).
+      # Back on resend, which works over HTTPS regardless of network policy — real
+      # delivery is limited to charithasreeboga@gmail.com until a domain is verified
+      # at resend.com/domains. The SMTP_* vars below are left configured but unused.
       - key: EMAIL_TRANSPORT
-        value: smtp
+        value: resend
       - key: EMAIL_FROM
-        value: Ticket Booking System <charithasreeboga@gmail.com>
+        value: Ticket Booking <onboarding@resend.dev>
       - key: SMTP_HOST
         value: smtp.gmail.com
       - key: SMTP_PORT
