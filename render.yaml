@@ -84,7 +84,6 @@ services:
   - type: web
     name: ticket-booking-web
     runtime: static
-    region: singapore
     plan: free
     rootDir: .
     buildCommand: npm ci && npm --workspace frontend run build
