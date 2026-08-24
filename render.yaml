@@ -13,8 +13,8 @@ services:
     region: singapore
     plan: free
     rootDir: .
-    buildCommand: npm ci && npm --workspace server run build && npm --workspace server run db:migrate
-    startCommand: npm --workspace server run start
+    buildCommand: npm ci && npm --workspace backend run build && npm --workspace backend run db:migrate
+    startCommand: npm --workspace backend run start
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
@@ -40,9 +40,23 @@ services:
         value: resend
       - key: EMAIL_FROM
         value: Ticket Booking <onboarding@resend.dev>
+      - key: PASSWORD_RESET_TTL_MINUTES
+        value: '10'
+      - key: PASSWORD_RESET_AUTHORIZATION_TTL_MINUTES
+        value: '10'
+      - key: EMAIL_VERIFICATION_TTL_MINUTES
+        value: '10'
+      - key: EMAIL_VERIFICATION_MAX_ATTEMPTS
+        value: '5'
+      - key: OTP_RESEND_COOLDOWN_SECONDS
+        value: '60'
 
-      # Must match the deployed frontend exactly — the refresh cookie is sent with
-      # credentials, and a wildcard origin cannot be combined with credentials.
+      # Set after both services exist and their real *.onrender.com URLs are known —
+      # e.g. CLIENT_URL=https://ticket-booking-web.onrender.com,
+      # API_URL=https://ticket-booking-api.onrender.com, CORS_ORIGINS=same as CLIENT_URL.
+      # Must include the https:// scheme (env validation requires a full URL) and must
+      # match the actual deployed frontend origin exactly, or the refresh cookie
+      # (sent with credentials) will be rejected by CORS.
       - key: CLIENT_URL
         sync: false
       - key: API_URL
@@ -66,3 +80,25 @@ services:
         value: '60000'
       - key: MONGO_POOL_MAX
         value: '15'
+
+  - type: web
+    name: ticket-booking-web
+    runtime: static
+    region: singapore
+    plan: free
+    rootDir: .
+    buildCommand: npm ci && npm --workspace frontend run build
+    staticPublishPath: frontend/dist
+    routes:
+      # Single-page app: every unmatched path must serve index.html, or a hard
+      # refresh on e.g. /bookings/:id would 404 instead of letting the SPA router handle it.
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      # Both must be the backend's real https://ticket-booking-api.onrender.com URL —
+      # set once that service exists (see the comment on the api service above).
+      - key: VITE_API_URL
+        sync: false
+      - key: VITE_SOCKET_URL
+        sync: false
