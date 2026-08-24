@@ -76,6 +76,64 @@ class ResendTransport implements EmailTransport {
   }
 }
 
+/** Splits `EMAIL_FROM`'s `"Name <email>"` shape into the parts Brevo's API wants separately. */
+function parseFrom(raw: string): { name?: string; email: string } {
+  const match = raw.match(/^(.*)<(.+)>$/);
+  if (!match) return { email: raw.trim() };
+  const name = match[1]!.trim().replace(/^"|"$/g, '');
+  return { ...(name ? { name } : {}), email: match[2]!.trim() };
+}
+
+/**
+ * Second arbitrary-recipient option alongside `smtp`, and the one that actually works
+ * from Render (Brevo's API is HTTPS, not a raw SMTP port). Needs only a single verified
+ * sender email (a 6-digit code sent to that address — no domain), unlike Resend's
+ * sandbox restriction. Its one real gap: no content-id/inline-image support in the send
+ * API, so attachments here are always regular (downloadable) attachments — the QR
+ * ticket email's `cid:` reference in the HTML simply won't resolve through this
+ * provider. Documented, not silently degraded.
+ */
+export class BrevoTransport implements EmailTransport {
+  readonly name = 'brevo';
+  private apiKey: string;
+
+  constructor(apiKey: string) {
+    this.apiKey = apiKey;
+  }
+
+  async send(message: EmailMessage): Promise<void> {
+    logger.info({ to: message.to, from: env.EMAIL_FROM, subject: message.subject }, '[EMAIL] sending via Brevo');
+
+    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'api-key': this.apiKey,
+        'content-type': 'application/json',
+        accept: 'application/json',
+      },
+      body: JSON.stringify({
+        sender: parseFrom(env.EMAIL_FROM),
+        to: [{ email: message.to }],
+        subject: message.subject,
+        htmlContent: message.html,
+        textContent: message.text,
+        attachment: message.attachments?.map((a) => ({
+          name: a.filename,
+          content: a.content.toString('base64'),
+        })),
+      }),
+    });
+
+    const body = (await res.json().catch(() => null)) as { messageId?: string; message?: string; code?: string } | null;
+    if (!res.ok) {
+      const detail = body?.message ?? `HTTP ${res.status}`;
+      logger.warn({ to: message.to, status: res.status, code: body?.code, message: body?.message }, '[EMAIL] Brevo rejected the message');
+      throw new Error(`Brevo ${body?.code ?? res.status}: ${detail}`);
+    }
+    logger.info({ to: message.to, brevoMessageId: body?.messageId }, '[EMAIL] Brevo accepted the message');
+  }
+}
+
 /**
  * Optional development provider. Exists for exactly one reason: Resend's free tier
  * refuses to deliver to any address other than the one the Resend account was signed up
@@ -179,6 +237,13 @@ export function getTransport(): EmailTransport {
     } else {
       transport = new ResendTransport(env.RESEND_API_KEY);
     }
+  } else if (env.EMAIL_TRANSPORT === 'brevo') {
+    if (!env.BREVO_API_KEY) {
+      logger.warn('EMAIL_TRANSPORT=brevo but BREVO_API_KEY is unset — falling back to file transport');
+      transport = new FileTransport();
+    } else {
+      transport = new BrevoTransport(env.BREVO_API_KEY);
+    }
   } else if (env.EMAIL_TRANSPORT === 'smtp') {
     if (!env.SMTP_HOST || !env.SMTP_PORT) {
       logger.warn('EMAIL_TRANSPORT=smtp but SMTP_HOST/SMTP_PORT are unset — falling back to file transport');
@@ -202,6 +267,7 @@ export function getTransport(): EmailTransport {
     {
       transport: transport.name,
       resendApiKeyConfigured: Boolean(env.RESEND_API_KEY),
+      brevoApiKeyConfigured: Boolean(env.BREVO_API_KEY),
       smtpHostConfigured: Boolean(env.SMTP_HOST),
       smtpUserConfigured: Boolean(env.SMTP_USER),
       emailFrom: env.EMAIL_FROM,

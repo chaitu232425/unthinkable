@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import nodemailer from 'nodemailer';
-import { SmtpTransport } from '../../src/email/transport.js';
+import { BrevoTransport, SmtpTransport } from '../../src/email/transport.js';
 
 /**
  * `SmtpTransport` exists so local development can reach an arbitrary real recipient
@@ -49,5 +49,57 @@ describe('SmtpTransport', () => {
     await expect(
       transport.send({ to: 'customer@example.com', subject: 'x', html: '<p>x</p>', text: 'x' }),
     ).rejects.toThrow('535 Authentication failed');
+  });
+});
+
+/**
+ * `BrevoTransport` is the arbitrary-recipient option that actually works from Render
+ * (Brevo's send API is HTTPS, unlike SMTP, which was confirmed blocked from both a home
+ * network and Render's own). Same recipient/sender and error-propagation guarantees as
+ * every other transport, verified here against a mocked `fetch` rather than the real API.
+ */
+describe('BrevoTransport', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('sends to the message recipient, never to EMAIL_FROM or anything hardcoded', async () => {
+    const calls: Array<{ url: string; body: unknown }> = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init: RequestInit) => {
+        calls.push({ url, body: JSON.parse(init.body as string) });
+        return new Response(JSON.stringify({ messageId: 'brevo-test-id' }), { status: 201 });
+      }),
+    );
+
+    const transport = new BrevoTransport('test-api-key');
+    await transport.send({
+      to: 'customer@example.com',
+      subject: 'Confirm your email',
+      html: '<p>123456</p>',
+      text: '123456',
+    });
+
+    expect(calls).toHaveLength(1);
+    const body = calls[0]!.body as { to: Array<{ email: string }>; sender: { email: string } };
+    expect(body.to).toEqual([{ email: 'customer@example.com' }]);
+    expect(body.sender.email).not.toBe('customer@example.com');
+  });
+
+  it('propagates a provider rejection rather than reporting success', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        new Response(JSON.stringify({ code: 'invalid_parameter', message: 'Sender not verified' }), {
+          status: 400,
+        }),
+      ),
+    );
+
+    const transport = new BrevoTransport('test-api-key');
+    await expect(
+      transport.send({ to: 'customer@example.com', subject: 'x', html: '<p>x</p>', text: 'x' }),
+    ).rejects.toThrow('Sender not verified');
   });
 });

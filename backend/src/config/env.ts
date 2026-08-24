@@ -75,17 +75,22 @@ const schema = z.object({
 
   /* ------------------------------------------------------------------ email */
   /**
-   * `resend` is the intended production provider. `smtp` is an optional development
-   * provider (e.g. Gmail SMTP with an App Password) for when arbitrary real recipients
-   * are needed locally but Resend's account isn't attached to a verified sending domain
-   * yet — Resend's own sandbox restriction otherwise limits delivery to the address the
-   * Resend account was signed up with. `file` writes .html files to disk; `memory` is
-   * for tests. Business logic (registration, password reset, tickets, waitlist) never
-   * imports Resend or SMTP directly — it only calls `getTransport().send()`, so this is
-   * the only place a provider swap has to happen.
+   * `resend` sends over HTTPS but, with no verified sending domain, only actually
+   * delivers to the address the Resend account was signed up with — a real, confirmed
+   * restriction, not something this app can configure around. `brevo` is the
+   * arbitrary-recipient alternative: also HTTPS (unlike `smtp`, which was confirmed
+   * blocked both locally and from Render's network), free tier, and only needs a single
+   * verified sender email — no domain. Its one gap is no inline-image (CID) support, so
+   * the QR ticket arrives as a regular attachment through this provider rather than
+   * embedded in the email body. `smtp` remains available for whichever network actually
+   * permits it. `file` writes .html files to disk; `memory` is for tests. Business logic
+   * (registration, password reset, tickets, waitlist) never imports a provider SDK
+   * directly — it only calls `getTransport().send()`, so this is the only place a
+   * provider swap has to happen.
    */
-  EMAIL_TRANSPORT: z.enum(['resend', 'smtp', 'file', 'memory']).default('file'),
+  EMAIL_TRANSPORT: z.enum(['resend', 'brevo', 'smtp', 'file', 'memory']).default('file'),
   RESEND_API_KEY: z.string().optional(),
+  BREVO_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().default('Ticket Booking <onboarding@resend.dev>'),
   MAIL_OUTBOX_DIR: z.string().default('.mail-outbox'),
 
