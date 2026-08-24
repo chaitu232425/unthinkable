@@ -37,25 +37,22 @@ services:
         sync: false
       - key: RESEND_API_KEY
         sync: false
-      # Not yet in use (EMAIL_TRANSPORT is still resend below) — filled in and switched
-      # over only once tested end-to-end with real recipients. See BrevoTransport in
-      # backend/src/email/transport.ts.
       - key: BREVO_API_KEY
         sync: false
 
       - key: MONGODB_DB_NAME
         value: ticket_booking
-      # Tested smtp here (Gmail) as an attempt to bypass Resend's sandbox restriction —
-      # confirmed it does NOT work: Render's free-tier network also blocks outbound
-      # SMTP (the production notification record for this test came back with
-      # last_error: "Connection timeout", same as the developer's home network).
-      # Back on resend, which works over HTTPS regardless of network policy — real
-      # delivery is limited to charithasreeboga@gmail.com until a domain is verified
-      # at resend.com/domains. The SMTP_* vars below are left configured but unused.
+      # Active provider: Brevo, HTTPS API (unlike smtp, confirmed blocked both on a home
+      # network and from Render's own — the test job's last_error was "Connection
+      # timeout" in both places). Free tier, 300/day, single-sender-verified
+      # (charithasreeboga@gmail.com, no domain), and — unlike Resend — no recipient-side
+      # sandbox restriction: live-tested delivering real "Confirm your email" and "Reset
+      # your password" messages to two different arbitrary Gmail addresses, both
+      # verified received. EMAIL_FROM must match the verified Brevo sender exactly.
       - key: EMAIL_TRANSPORT
-        value: resend
+        value: brevo
       - key: EMAIL_FROM
-        value: Ticket Booking <onboarding@resend.dev>
+        value: Ticket Booking System <charithasreeboga@gmail.com>
       - key: SMTP_HOST
         value: smtp.gmail.com
       - key: SMTP_PORT
