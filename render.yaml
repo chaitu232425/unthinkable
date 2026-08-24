@@ -13,7 +13,11 @@ services:
     region: singapore
     plan: free
     rootDir: .
-    buildCommand: npm ci && npm --workspace backend run build && npm --workspace backend run db:migrate
+    # --include=dev is required: NODE_ENV=production is set below (needed at runtime),
+    # but npm reads that same env var during `npm ci` and skips devDependencies by
+    # default — which is exactly where the build tool (tsup) lives. Without this flag
+    # the build fails with "tsup: not found" (reproduced and confirmed locally).
+    buildCommand: npm ci --include=dev && npm --workspace backend run build && npm --workspace backend run db:migrate
     startCommand: npm --workspace backend run start
     healthCheckPath: /health
     envVars:
