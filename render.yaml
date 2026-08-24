@@ -84,7 +84,6 @@ services:
   - type: web
     name: ticket-booking-web
     runtime: static
-    plan: free
     rootDir: .
     buildCommand: npm ci && npm --workspace frontend run build
     staticPublishPath: frontend/dist
