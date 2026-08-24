@@ -1,0 +1,33 @@
+node_modules/
+dist/
+build/
+coverage/
+*.log
+npm-debug.log*
+
+# Environment — never commit real secrets
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Dev email transport output
+backend/.mail-outbox/
+
+# Local MongoDB data directory (see QUICKSTART.md / README.md)
+.mongo-data/
+backend/.local-mongo-uri.txt
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+
+# Test artefacts
+backend/tests/.tmp/
+*.tsbuildinfo
+cookies*.txt
+*_result.json
+verify_result*.json

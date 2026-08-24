@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    # tests/setup.ts spins up its own one-node MongoDB replica set via
+    # mongodb-memory-server when TEST_MONGODB_URI isn't set, so no services: block is
+    # needed here — unlike a plain `mongod` container, that gives the test suite the
+    # multi-document transactions the app actually depends on.
+    env:
+      JWT_SECRET: ci-jwt-secret-value-not-for-production
+      JWT_REFRESH_SECRET: ci-refresh-secret-value-not-production
+      TICKET_SECRET: ci-ticket-hmac-secret-value-not-prod
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test (includes the 25-way seat race)
+        run: npm test
+
+      - name: Build backend
+        run: npm --workspace backend run build
+
+      - name: Build frontend
+        run: npm --workspace frontend run build

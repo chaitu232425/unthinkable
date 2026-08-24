@@ -1,0 +1,31 @@
+{
+  "name": "ticket-booking-system",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Ticket booking platform for movies and concerts \u2014 seat holds with TTL, concurrency-safe booking, FIFO waitlist with time-limited offers, QR tickets.",
+  "engines": {
+    "node": ">=20.11"
+  },
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c cyan,magenta \"npm:dev:backend\" \"npm:dev:frontend\"",
+    "dev:backend": "npm --workspace backend run dev",
+    "dev:frontend": "npm --workspace frontend run dev",
+    "build": "npm --workspace backend run build && npm --workspace frontend run build",
+    "start": "npm --workspace backend run start",
+    "typecheck": "npm --workspace backend run typecheck && npm --workspace frontend run typecheck",
+    "db:migrate": "npm --workspace backend run db:migrate",
+    "db:rollback": "npm --workspace backend run db:rollback",
+    "db:seed": "npm --workspace backend run db:seed",
+    "db:reset": "npm --workspace backend run db:reset",
+    "test": "npm --workspace backend run test",
+    "test:concurrency": "npm --workspace backend run test:concurrency"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

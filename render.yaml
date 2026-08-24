@@ -1,0 +1,68 @@
+# Render blueprint for the API.
+#
+# The database lives on MongoDB Atlas rather than here (Render doesn't offer a managed
+# Mongo add-on), so MONGODB_URI is supplied as a secret rather than provisioned by this
+# file — point it at any Atlas cluster, which is a replica set by default and so
+# supports the multi-document transactions this app relies on. Migrations run as part of
+# the build step, which means a deploy that cannot migrate never starts serving traffic.
+
+services:
+  - type: web
+    name: ticket-booking-api
+    runtime: node
+    region: singapore
+    plan: free
+    rootDir: .
+    buildCommand: npm ci && npm --workspace server run build && npm --workspace server run db:migrate
+    startCommand: npm --workspace server run start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+
+      # ── secrets: set these in the Render dashboard, never in this file ──
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: TICKET_SECRET
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+
+      - key: MONGODB_DB_NAME
+        value: ticket_booking
+      - key: EMAIL_TRANSPORT
+        value: resend
+      - key: EMAIL_FROM
+        value: Ticket Booking <onboarding@resend.dev>
+
+      # Must match the deployed frontend exactly — the refresh cookie is sent with
+      # credentials, and a wildcard origin cannot be combined with credentials.
+      - key: CLIENT_URL
+        sync: false
+      - key: API_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+
+      - key: DEFAULT_HOLD_TTL
+        value: '600'
+      - key: DEFAULT_OFFER_TTL
+        value: '900'
+      - key: CANCEL_CUTOFF_MINUTES
+        value: '120'
+      - key: JOBS_ENABLED
+        value: 'true'
+      - key: SWEEPER_INTERVAL_SECONDS
+        value: '15'
+      - key: OUTBOX_INTERVAL_SECONDS
+        value: '10'
+      - key: JOB_LOCK_TTL_MS
+        value: '60000'
+      - key: MONGO_POOL_MAX
+        value: '15'
