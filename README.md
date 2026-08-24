@@ -1,5 +1,11 @@
 # Ticket Booking System
 
+**🔗 Live demo:** [ticket-booking-web-1mn9.onrender.com](https://ticket-booking-web-1mn9.onrender.com)
+**API:** [ticket-booking-api-d9z5.onrender.com](https://ticket-booking-api-d9z5.onrender.com) · [API docs](https://ticket-booking-api-d9z5.onrender.com/api/docs)
+
+> Hosted on Render's free tier — the first request after a period of inactivity can take
+> up to ~50 seconds while the instance spins back up.
+
 A ticket booking platform for movies and concerts. Customers pick seats from a live
 visual map; selected seats are **held with a configurable TTL** and released
 automatically if checkout is abandoned; **two customers can never hold or book the same
